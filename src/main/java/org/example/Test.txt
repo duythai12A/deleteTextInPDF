@@ -1,12 +1,457 @@
-# Fix bug no matches for kind PodDisruptionBudget in version policy/v1:
-{{- if .Capabilities.APIVersions.Has "policy/v1" }}
-apiVersion: policy/v1
-{{- else }}
+# Script Deploy
+
+1. Rancher-monitoring-crd
+
+```jsx
+helm install rancher-monitoring-crd ./monitor/rancher-monitoring-crd --kube-insecure-skip-tls-verify --namespace cattle-monitoring-system  `
+--set image.repository=rancher/shell `
+--set image.tag=v0.2.1
+```
+
+1. Rancher-monitoring
+
+```jsx
+helm install rancher-monitoring ./monitor/rancher-monitoring --kube-insecure-skip-tls-verify --namespace cattle-monitoring-system  `
+--set global.image.repository="hashicorp/vault-k8s" `
+--set global.image.repository="1.4.2" `
+--set global.image.pullPolicy=Always `
+--set global.agentImage.repository="hashicorp/vault" `
+--set global.agentImage.repository="1.17.2" `
+--set server.service.nodePort=30022
+```
+
+## Use Vault generate Certificate
+
+What should be true after this project is implemented?
+
+1. **Generate a new credential by writing to the issue endpoint with the name of the role**
+
+```cpp
+Vault write pki/issue/test-vault common_name=www.example.com
+```
+
+1. **Create secret vault-token, issuer for vault, certificate from vault**
+2. **Create ingress nginx user certificate**
+
+## How to use
+
+1. ***User Open ssl gen cert + key*** 
+2. ***Import cert + key in UI***
+
+### ***PKI secrets engine – setup and usage***
+
+- **Login vault**
+
+```jsx
+vault login <root-token>
+```
+
+- **Enable PKI secrets engine**
+
+```jsx
+vault secrets enable pki
+```
+
+- **Set TTL secrets**
+
+```jsx
+**vault secrets tune -max-lease-ttl=8760h pki**
+```
+
+- **Configure a CA certificate and private key**
+
+```jsx
+vault write pki/root/generate/internal common_name=example.com ttl=8760h
+```
+
+- **Update the CRL location and issuing certificates**
+
+```jsx
+vault wirte pki/configs/urls issuing_certificates=”http://10.254.207.99:8988/v1/pki/ca”\
+```
+
+```jsx
+Crl_distribution_points=”http://10.254.207.99:8988/v1/pki/crl”
+```
+
+- **Configure a role that maps a name in Vault to a produre for generating a certificate (url role config trong mapping config)**
+
+```jsx
+vault write pki/roles/test-vault allowed_domains=example.com allow_bare_domains=true allow_wildcard_certificates=true allow_subdomains=true require cn=false max_ttl=720h
+```
+
+## Enable authen user pass
+
+1. ***Enable the userpass***
+    - Default
+        
+        ```cpp
+        Vault auth enable userpass
+        ```
+        
+    - Edit path
+    
+    ```cpp
+    Vault auth enable -path=<path> userpass
+    ```
+    
+
+> Ex: auth/userpass
+> 
+1. ***Configure it with users that are allowed to authenticate***
+
+```cpp
+Vault write auth/<userpass-paht>/users/mitchellh passs=foo policies=[name-policy]
+```
+
+Ex: auth/userpass/users/admin
+
+1. ***Set role admins = root***
+
+```cpp
+Vault policy write  [name_policy]-<< EOF
+Path
+```
+
+## FLow
+
+1. Cấu hình vault để cấp phát chứng chỉ cho tên miền của bạn
+2. Cấu hình cert-manager để sử dụng vault-issuer
+3. Tạo certificateRequest để yêu cầu chứng chỉ cho trang web của bạn
+4. Signed certificate sẽ được lưu trong secret
+5. Sau đó ứng dụng sẽ được trust qua cert được lưu trong secret này
+6. Custom time renew certificates
+7. Duration và renew before
+
+### CadvisorStandAlone & ServiceMonitoring yaml
+
+## **1. File yaml**
+
+```yaml
+1apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: cadvisor
+  name: cadvisor
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: cadvisor
+  name: cadvisor
+rules:
+- apiGroups:
+  - policy
+  resourceNames:
+  - cadvisor
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: cadvisor
+  name: cadvisor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cadvisor
+subjects:
+- kind: ServiceAccount
+  name: cadvisor
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: docker/default
+  labels:
+    app: cadvisor
+  name: cadvisor
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: cadvisor
+      name: cadvisor
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+      labels:
+        app: cadvisor
+        name: cadvisor
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - --housekeeping_interval=10s
+        - --max_housekeeping_interval=15s
+        - --event_storage_event_limit=default=0
+        - --event_storage_age_limit=default=0
+        - --enable_metrics=app,cpu,disk,diskIO,memory,network,process
+        - --docker_only
+        - --store_container_labels=false
+        - --whitelisted_container_labels=io.kubernetes.container.name,io.kubernetes.pod.name,io.kubernetes.pod.namespace
+        image: gcr.io/cadvisor/cadvisor:v0.46.0
+        name: cadvisor
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 800m
+            memory: 2000Mi
+          requests:
+            cpu: 400m
+            memory: 400Mi
+        volumeMounts:
+        - mountPath: /rootfs
+          name: rootfs
+          readOnly: true
+        - mountPath: /var/run
+          name: var-run
+          readOnly: true
+        - mountPath: /sys
+          name: sys
+          readOnly: true
+        - mountPath: /var/lib/docker
+          name: docker
+          readOnly: true
+        - mountPath: /dev/disk
+          name: disk
+          readOnly: true
+      priorityClassName: system-node-critical
+      serviceAccountName: cadvisor
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - key: node-role.kubernetes.io/controlplane
+        value: "true"
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/etcd
+        value: "true"
+        effect: NoExecute
+      volumes:
+      - hostPath:
+          path: /
+        name: rootfs
+      - hostPath:
+          path: /var/run
+        name: var-run
+      - hostPath:
+          path: /sys
+        name: sys
+      - hostPath:
+          path: /var/lib/docker
+        name: docker
+      - hostPath:
+          path: /dev/disk
+        name: disk
+---
 apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  labels:
+    app: cadvisor
+  name: cadvisor
+  namespace: kube-system
+spec:
+  allowedHostPaths:
+  - pathPrefix: /
+  - pathPrefix: /var/run
+  - pathPrefix: /sys
+  - pathPrefix: /var/lib/docker
+  - pathPrefix: /dev/disk
+  fsGroup:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+  - '*'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cadvisor
+  labels:
+    app: cadvisor
+  namespace: kube-system
+spec:
+  selector:
+    app: cadvisor
+  ports:
+  - name: cadvisor
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: cadvisor
+  name: cadvisor
+  namespace: kube-system
+spec:
+  endpoints:
+  - metricRelabelings:
+    - sourceLabels:
+      - container_label_io_kubernetes_pod_name
+      targetLabel: pod
+    - sourceLabels:
+      - container_label_io_kubernetes_container_name
+      targetLabel: container
+    - sourceLabels:
+      - container_label_io_kubernetes_pod_namespace
+      targetLabel: namespace
+    - action: labeldrop
+      regex: container_label_io_kubernetes_pod_name
+    - action: labeldrop
+      regex: container_label_io_kubernetes_container_name
+    - action: labeldrop
+      regex: container_label_io_kubernetes_pod_namespace
+    port: cadvisor
+    relabelings:
+    - sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: node
+    - sourceLabels:
+      - __metrics_path__
+      targetLabel: metrics_path
+      replacement: /metrics/cadvisor
+    - sourceLabels:
+      - job
+      targetLabel: job
+      replacement: kubelet
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  selector:
+    matchLabels:
+      app: cadvisor
+```
+
+## 2. Lí do
+
+- **Bản k8s đã xóa nhãn của container nên không thể lấy metrics được của container**
+- **Cần tắt cadvisor mặc định của monitoring và chạy cadvisor standalone cho từng node để lấy metrics**
+- Tắt trong helmchart
+
+```yaml
+kubelet:
+	serviceMonitor:
+	cAdvisor: false
+```
+
+![image.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/241a97c2-873c-4e88-b894-a9aa72068c70/c09113ee-7309-424a-bc04-e561ee6b6352/image.png)
+
+## Enable login as admin in grafana dashboard
+
+***Thêm vào helm chart*** 
+
+```yaml
+global:
+  cattle:
+    clusterId: "local"
+    clusterName: local
+```
+
+```yaml
+prometheus-node-exporter:
+  hostRootFsMount:
+    enabled: false
+```
+
+## Sửa file /template/prometheus-operator/admission-webhooks/job-patch/job-createSecret.yaml
+
+```
+{{- if and .Values.prometheusOperator.enabled .Values.prometheusOperator.admissionWebhooks.enabled .Values.prometheusOperator.admissionWebhooks.patch.enabled (not .Values.prometheusOperator.admissionWebhooks.certManager.enabled) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name:  {{ template "kube-prometheus-stack.fullname" . }}-admission-create
+  namespace: {{ template "kube-prometheus-stack.namespace" . }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    app: {{ template "kube-prometheus-stack.name" $ }}-admission-create
+{{- include "kube-prometheus-stack.labels" $ | indent 4 }}
+spec:
+  {{- if .Capabilities.APIVersions.Has "batch/v1alpha1" }}
+  # Alpha feature since k8s 1.12
+  ttlSecondsAfterFinished: 0
+  {{- end }}
+  template:
+    metadata:
+      name:  {{ template "kube-prometheus-stack.fullname" . }}-admission-create
+{{- with .Values.prometheusOperator.admissionWebhooks.patch.podAnnotations }}
+      annotations:
+{{ toYaml .  | indent 8 }}
 {{- end }}
-# Fix bug no matches for kind "Ingress" in version "extensions/v1beta1"
-{{- if .Capabilities.APIVersions.Has "extensions/v1beta1" }}
-extensions/v1beta1
-{{- else }}
-networking.k8s.io/v1
+      labels:
+        app: {{ template "kube-prometheus-stack.name" $ }}-admission-create
+{{- include "kube-prometheus-stack.labels" $ | indent 8 }}
+    spec:
+      {{- if .Values.prometheusOperator.admissionWebhooks.patch.priorityClassName }}
+      priorityClassName: {{ .Values.prometheusOperator.admissionWebhooks.patch.priorityClassName }}
+      {{- end }}
+      containers:
+        - name: create
+          {{- if .Values.prometheusOperator.admissionWebhooks.patch.image.sha }}
+          image: {{ template "system_default_registry" . }}{{ .Values.prometheusOperator.admissionWebhooks.patch.image.repository }}:{{ .Values.prometheusOperator.admissionWebhooks.patch.image.tag }}@sha256:{{ .Values.prometheusOperator.admissionWebhooks.patch.image.sha }}
+          {{- else }}
+          image: {{ template "system_default_registry" . }}{{ .Values.prometheusOperator.admissionWebhooks.patch.image.repository }}:{{ .Values.prometheusOperator.admissionWebhooks.patch.image.tag }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.prometheusOperator.admissionWebhooks.patch.image.pullPolicy }}
+          args:
+            - create
+            - --host={{ template "kube-prometheus-stack.operator.fullname" . }},{{ template "kube-prometheus-stack.operator.fullname" . }}.{{ template "kube-prometheus-stack.namespace" . }}.svc
+            - --namespace={{ template "kube-prometheus-stack.namespace" . }}
+            - --secret-name={{ template "kube-prometheus-stack.fullname" . }}-admission
+          resources:
+{{ toYaml .Values.prometheusOperator.admissionWebhooks.patch.resources | indent 12 }}
+      restartPolicy: OnFailure
+      serviceAccountName: {{ template "kube-prometheus-stack.fullname" . }}-admission
+      nodeSelector: {{ include "linux-node-selector" . | nindent 8 }} 
+{{- with .Values.prometheusOperator.admissionWebhooks.patch.nodeSelector }}
+{{ toYaml . | indent 8 }}
 {{- end }}
+      {{- with .Values.prometheusOperator.admissionWebhooks.patch.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      tolerations: {{ include "linux-node-tolerations" . | nindent 8 }} 
+{{- with .Values.prometheusOperator.admissionWebhooks.patch.tolerations }}
+{{ toYaml . | indent 8 }}
+      {{- end }}
+{{- if .Values.prometheusOperator.admissionWebhooks.patch.securityContext }}
+      securityContext:
+{{ toYaml .Values.prometheusOperator.admissionWebhooks.patch.securityContext | indent 8 }}
+{{- end }}
+{{- end }}
+
+```
+
+## Fix lỗi mount nodeExporter
+
+```yaml
+kubectl patch ds rancher-monitoring-prometheus-node-exporter --type "json" -p '[{"op": "remove", "path" : "/spec/template/spec/containers/0/volumeMounts/2/mountPropagation"}]' -n cattle-monitoring-system
+```
+
+## Display metrics
+
+1. Set cadvisor rancher-monitoring là false 
+2. sử dụng metrics-server
