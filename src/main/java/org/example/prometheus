@@ -1,0 +1,34 @@
+scrape_configs:
+  - job_name: 'spark-application'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      # Scrape only pods that have the label "sparkoperator.k8s.io/app-name" set to the name of your Spark application
+      - source_labels: [__meta_kubernetes_pod_label_sparkoperator_k8s_io_app_name]
+        action: keep
+        regex: spark-pi
+      # Scrape only pods that have the label "spark-role" set to "driver" or "executor"
+      - source_labels: [__meta_kubernetes_pod_label_spark_role]
+        action: keep
+        regex: (driver|executor)
+      # Scrape the port named "prometheus" (defined in your Spark application YAML)
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: prometheus
+      # Replace the default /metrics path with /metrics/
+      - source_labels: []
+        regex: .*
+        target_label: _metrics_path_
+        replacement: /metrics/
+      # Extract the application ID from the pod label and make it a label of the metrics
+      - source_labels: [__meta_kubernetes_pod_label_sparkoperator_k8s_io_app_id]
+        target_label: application_id
+      # Extract the role (driver or executor) from the pod label and make it a label of the metrics
+      - source_labels: [__meta_kubernetes_pod_label_spark_role]
+        target_label: role
+      # Make the pod name a label of the metrics
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod_name
+      # Make the namespace a label of the metrics
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
