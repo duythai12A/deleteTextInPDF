@@ -1,0 +1,10 @@
+spec:
+  containers:
+  - name: spark-thriftserver
+    # ... các cấu hình khác ...
+    env:
+    - name: SPARK_DRIVER_OPTS
+      value: "-javaagent:/opt/spark/jars/jmx_prometheus_javaagent-0.11.0.jar=8080:/opt/spark/conf/jmx-exporter-config.yaml"
+    - name: SPARK_EXECUTOR_OPTS
+      value: "-javaagent:/opt/spark/jars/jmx_prometheus_javaagent-0.11.0.jar=8080:/opt/spark/conf/jmx-exporter-config.yaml"
+    # ... các biến môi trường khác ...
