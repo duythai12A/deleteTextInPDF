@@ -1,0 +1,27 @@
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+- pattern: "Catalina<type=GlobalRequestProcessor, name=\"(\w+-\w+)-(\d+)\"><>(\w+)"
+  name: tomcat_$3_total
+  labels:
+    port: "$2"
+    protocol: "$1"
+  help: "Tomcat $3"
+  type: COUNTER
+
+- pattern: 'java.lang<type=GarbageCollector, name=(.*)><>CollectionCount'
+  name: jvm_gc_collection_count
+  labels:
+    gc: "$1"
+  help: "JVM Garbage Collection Count"
+  type: COUNTER
+
+- pattern: 'java.lang<type=Memory><>HeapMemoryUsage'
+  name: jvm_memory_heap_usage
+  help: "JVM Heap Memory Usage"
+  type: GAUGE
+
+- pattern: 'java.lang<type=OperatingSystem><>(.*)'
+  name: os_$1
+  help: "OS $1"
+  type: GAUGE
