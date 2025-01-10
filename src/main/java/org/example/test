@@ -1,40 +1,13 @@
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: sql-engine-servicemonitor
+---
+lowercaseOutputName: true
+attrNameSnakeCase: true
+rules:
+- pattern: metrics<name=(S+).driver.(S+).StreamingMetrics.streaming.(S+)><>Value
+  name: spark_streaming_$3
   labels:
-    release: rancher-monitoring
-spec:
-  selector:
-    matchLabels:
-      app: spark-sql-engine
-  endpoints:
-    - port: metrics-port
-      interval: 30s
-      path: /metrics
-      params:
-        format: [prometheus]
-  namespaceSelector:
-    matchNames:
-      - default
-
-
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: sql-engine-servicemonitor
+    app_id: "$1"
+    app_name: "$2"
+- pattern: metrics<name=(S+).driver.(BlockManager|DAGScheduler).(S+)><>Value
+  name: spark_$2_$3
   labels:
-    release: rancher-monitoring
-spec:
-  selector:
-    matchLabels:
-      app: spark-sql-engine
-  endpoints:
-    - port: metrics-port
-      interval: 30s
-      path: /metrics
-      params:
-        format: [prometheus]
-  namespaceSelector:
-    matchNames:
-      - default
+    app_id: "$1"
