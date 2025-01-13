@@ -1,0 +1,100 @@
+Giới thiệu về Elasticsearch
+Elasticsearch là một công cụ tìm kiếm và phân tích phân tán, mã nguồn mở được xây dựng trên nền tảng Apache Lucene. Nó cho phép bạn lưu trữ, tìm kiếm và phân tích khối lượng lớn dữ liệu một cách nhanh chóng và gần như thời gian thực. Elasticsearch được phát triển bằng Java và được phát hành dưới dạng mã nguồn mở theo giấy phép Apache.
+
+Một số đặc điểm nổi bật của Elasticsearch:
+
+Phân tán: Dữ liệu được chia nhỏ và lưu trữ trên nhiều node (máy chủ) khác nhau, giúp tăng khả năng mở rộng, chịu lỗi và hiệu suất.
+Tìm kiếm toàn văn bản: Hỗ trợ tìm kiếm mạnh mẽ với nhiều tính năng như tìm kiếm mờ, tìm kiếm theo cụm từ, đánh trọng số, v.v.
+Phân tích dữ liệu: Cung cấp các công cụ phân tích mạnh mẽ để trích xuất thông tin chi tiết từ dữ liệu, bao gồm tổng hợp, thống kê, v.v.
+Gần như thời gian thực: Dữ liệu mới được lập chỉ mục và có thể tìm kiếm gần như ngay lập tức.
+RESTful API: Giao tiếp thông qua API RESTful, dễ dàng tích hợp với các ứng dụng khác.
+Dễ sử dụng: Cung cấp giao diện Kibana trực quan để quản lý và truy vấn dữ liệu.
+Cộng đồng lớn và hỗ trợ tốt: Được hỗ trợ bởi một cộng đồng lớn và có nhiều tài liệu hướng dẫn.
+Mục đích sử dụng của Elasticsearch
+Elasticsearch có rất nhiều ứng dụng trong các lĩnh vực khác nhau, nhờ vào khả năng tìm kiếm và phân tích mạnh mẽ của nó. Dưới đây là một số mục đích sử dụng phổ biến:
+
+Tìm kiếm ứng dụng: Tích hợp tính năng tìm kiếm vào các ứng dụng web, di động, thương mại điện tử, v.v. Ví dụ: tìm kiếm sản phẩm trên website thương mại điện tử, tìm kiếm bài viết trên blog, tìm kiếm người dùng trong mạng xã hội.
+Tìm kiếm trang web: Cải thiện trải nghiệm tìm kiếm trên website, giúp người dùng dễ dàng tìm thấy thông tin họ cần.
+Phân tích Log: Thu thập, lưu trữ và phân tích log từ các hệ thống khác nhau (máy chủ, ứng dụng, thiết bị mạng) để giám sát hiệu suất, phát hiện lỗi và bảo mật.
+Phân tích dữ liệu kinh doanh: Phân tích dữ liệu kinh doanh từ nhiều nguồn khác nhau (CRM, ERP, mạng xã hội) để đưa ra các quyết định kinh doanh sáng suốt.
+Giám sát cơ sở hạ tầng và ứng dụng (APM): Theo dõi hiệu suất của các ứng dụng và cơ sở hạ tầng, phát hiện các vấn đề tiềm ẩn và tối ưu hóa hiệu suất.
+Phân tích bảo mật: Phát hiện các mối đe dọa bảo mật bằng cách phân tích log, sự kiện và dữ liệu mạng.
+Lập chỉ mục và tìm kiếm tài liệu: Lưu trữ và tìm kiếm tài liệu (PDF, Word, Excel) một cách hiệu quả.
+Tóm lại:
+
+Elasticsearch là một công cụ mạnh mẽ và linh hoạt, có thể được sử dụng cho nhiều mục đích khác nhau liên quan đến tìm kiếm và phân tích dữ liệu. Nếu bạn cần một giải pháp để xử lý khối lượng lớn dữ liệu và cung cấp khả năng tìm kiếm, phân tích nhanh chóng, Elasticsearch là một lựa chọn tuyệt vời.
+21.5s
+Kiến trúc than phần, sơ đồ và vai trò của các component trong elastichsearck
+Kiến trúc thành phần, sơ đồ và vai trò của các component trong Elasticsearch
+Elasticsearch có kiến trúc phân tán, bao gồm nhiều thành phần (component) làm việc cùng nhau để cung cấp khả năng lưu trữ, tìm kiếm và phân tích dữ liệu. Dưới đây là sơ đồ đơn giản và mô tả vai trò của các thành phần chính:
+
+Sơ đồ:
+
++-------------------------------------------------+
+|                   Cluster                       |
++-------------------------------------------------+
+|  +--------------+   +--------------+           |
+|  |   Node 1     |   |   Node 2     | ...       |
+|  +--------------+   +--------------+           |
+|  |  +----------+ |   |  +----------+ |         |
+|  |  | Shard 1  | |   |  | Shard 2  | |         |
+|  |  +----------+ |   |  +----------+ |         |
+|  |  +----------+ |   |  +----------+ |         |
+|  |  | Shard 3  | |   |  | Shard 4  | |         |
+|  |  +----------+ |   |  +----------+ |         |
+|  |  +----------+ |   |  +----------+ |         |
+|  |  | Replica  | |   |  | Replica  | |         |
+|  |  +----------+ |   |  +----------+ |         |
+|  +--------------+   +--------------+           |
++-------------------------------------------------+
+      ^                                      ^
+      |                                      |
+      |      Client (REST API, Java API)     |
+      +---------------------------------------+
+Use code with caution.
+Các thành phần chính:
+
+Cluster:
+Vai trò: Là tập hợp của một hoặc nhiều node (máy chủ) Elasticsearch làm việc cùng nhau. Cluster cung cấp khả năng lập chỉ mục và tìm kiếm trên tất cả các node.
+Đặc điểm:
+Mỗi cluster được xác định bởi một tên duy nhất.
+Các node có thể tham gia hoặc rời khỏi cluster một cách linh hoạt.
+Cluster tự động cân bằng tải và phân phối dữ liệu trên các node.
+Node:
+Vai trò: Là một instance (phiên bản) của Elasticsearch, hoạt động như một máy chủ đơn lẻ trong cluster. Node lưu trữ dữ liệu và tham gia vào các hoạt động lập chỉ mục và tìm kiếm của cluster.
+Các loại Node:
+Master Node: Chịu trách nhiệm quản lý cluster, bao gồm thêm/xóa node, tạo/xóa index, phân bổ shard, v.v. Một cluster chỉ có một master node hoạt động tại một thời điểm. Các node khác có thể được bầu làm master node nếu node hiện tại gặp sự cố (master-eligible node).
+Data Node: Lưu trữ dữ liệu dưới dạng shard và thực hiện các thao tác liên quan đến dữ liệu như CRUD, tìm kiếm, tổng hợp.
+Ingest Node: Tiền xử lý tài liệu trước khi lập chỉ mục. Nó có thể thực hiện các tác vụ như chuyển đổi, làm giàu dữ liệu, v.v.
+Client Node (hoặc Coordinating Node): Hoạt động như một bộ cân bằng tải, định tuyến các yêu cầu từ client đến các node thích hợp. Nó không lưu trữ dữ liệu và không phải là master node.
+Lưu ý: Một node có thể đảm nhận nhiều vai trò cùng lúc (ví dụ: vừa là data node vừa là master-eligible node).
+Index:
+Vai trò: Là một tập hợp các tài liệu (document) có cấu trúc tương tự nhau. Tương tự như database trong hệ quản trị cơ sở dữ liệu quan hệ.
+Đặc điểm:
+Mỗi index được xác định bởi một tên duy nhất (viết thường).
+Index được chia thành các shard để phân tán dữ liệu trên các node.
+Index có thể định nghĩa mapping (cấu trúc dữ liệu) cho các trường (field) trong tài liệu.
+Shard:
+Vai trò: Là một phần của index, chứa một phần dữ liệu của index đó. Shard là đơn vị cơ bản cho việc phân tán và mở rộng của Elasticsearch. Mỗi shard thực chất là một index Lucene đầy đủ chức năng và độc lập.
+Các loại Shard:
+Primary Shard: Shard chính, lưu trữ dữ liệu gốc. Số lượng primary shard được xác định khi tạo index và không thể thay đổi sau đó.
+Replica Shard: Bản sao của primary shard. Replica shard cung cấp khả năng chịu lỗi (nếu primary shard gặp sự cố) và tăng hiệu suất đọc (có thể phục vụ các yêu cầu tìm kiếm).
+Đặc điểm:
+Phân tán dữ liệu trên nhiều node, giúp tăng khả năng mở rộng và hiệu suất.
+Cung cấp khả năng chịu lỗi thông qua replica shard.
+Document:
+Vai trò: Là đơn vị thông tin cơ bản có thể được lập chỉ mục trong Elasticsearch. Document được biểu diễn dưới dạng JSON và chứa các trường (field) với các giá trị tương ứng.
+Đặc điểm:
+Mỗi document thuộc về một index.
+Document có một ID duy nhất trong index.
+Document có thể có cấu trúc phức tạp, với các trường lồng nhau.
+Mapping:
+Vai trò: Định nghĩa cấu trúc dữ liệu cho các trường trong document của một index. Nó xác định kiểu dữ liệu (text, keyword, integer, date, v.v.) và các thuộc tính khác cho mỗi trường.
+Đặc điểm:
+Giúp Elasticsearch hiểu cách lập chỉ mục và tìm kiếm dữ liệu.
+Có thể được định nghĩa rõ ràng hoặc tự động suy ra từ dữ liệu.
+Client:
+Vai trò: Giao tiếp với cluster Elasticsearch thông qua API (thường là RESTful API hoặc Java API). Client có thể gửi các yêu cầu như lập chỉ mục, tìm kiếm, cập nhật, xóa dữ liệu, v.v.
+Tóm lại:
+
+Elasticsearch có kiến trúc phân tán với các thành phần làm việc chặt chẽ với nhau. Cluster là tập hợp các node, mỗi node có thể chứa nhiều shard. Index được chia thành các shard (primary và replica) để phân tán dữ liệu và cung cấp khả năng chịu lỗi. Document là đơn vị thông tin cơ bản được lưu trữ trong index. Mapping định nghĩa cấu trúc dữ liệu cho các document. Client giao tiếp với cluster để thực hiện các thao tác. Hiểu rõ kiến trúc này giúp bạn sử dụng Elasticsearch hiệu quả hơn và tối ưu hóa hiệu suất cho ứng dụng của mình.
