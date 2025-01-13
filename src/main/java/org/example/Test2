@@ -1,0 +1,41 @@
+scrape_configs:
+  - job_name: 'spark-sql-thrift'
+    kubernetes_sd_configs:
+      - role: endpoints
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: prometheus
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: prometheus
+      - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:8080
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        action: replace
+        target_label: kubernetes_name
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: container
+        action: keep
+        regex: (.*spark.*|.*driver.*|.*executor.*) # Keep only Spark containers
+      - source_labels: [__meta_kubernetes_pod_name,__meta_kubernetes_pod_container_name]
+        separator: '/'
+        target_label: instance
+      - source_labels: [__meta_kubernetes_pod_label_spark_role]
+        target_label: driverOrExecutor
+        action: keep
+        regex: (driver|executor)
